@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#2b2117"/>
+  <rect x="100" y="100" width="312" height="312" rx="20" fill="#fbf4e2" stroke="#e5d5b8" stroke-width="4"/>
+  <rect x="130" y="160" width="252" height="20" rx="4" fill="#e5d5b8"/>
+  <rect x="130" y="200" width="200" height="20" rx="4" fill="#e5d5b8"/>
+  <rect x="130" y="240" width="252" height="20" rx="4" fill="#e5d5b8"/>
+  <rect x="130" y="280" width="180" height="20" rx="4" fill="#e5d5b8"/>
+  <rect x="130" y="320" width="252" height="20" rx="4" fill="#e5d5b8"/>
+  <circle cx="380" cy="140" r="50" fill="#a8322e"/>
+  <text x="380" y="158" text-anchor="middle" fill="#fff" font-size="44" font-weight="bold" font-family="serif">礼</text>
+</svg>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#2b2117">
+  <title>人情往来簿</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <!-- 书架页 -->
+  <div id="page-shelf" class="page active">
+    <div class="topbar">
+      <div class="topbar-title">
+        <span class="seal-icon">礼</span>
+        <h1>人情往来簿</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-search" class="icon-btn" title="搜索">&#128269;</button>
+        <button id="btn-add-book" class="icon-btn" title="添加账本">&#43;</button>
+        <button id="btn-settings" class="icon-btn" title="设置">&#9881;</button>
+      </div>
+    </div>
+    <div class="shelf-summary" id="shelf-summary"></div>
+    <div class="shelf-grid" id="shelf-grid"></div>
+    <div class="empty-hint" id="shelf-empty" style="display:none">
+      <p>还没有账本</p>
+      <p>点击右上角 + 创建第一本</p>
+    </div>
+  </div>
+
+  <!-- 翻书页 -->
+  <div id="page-book" class="page">
+    <div class="topbar book-topbar">
+      <button id="btn-book-back" class="icon-btn back-btn" title="返回">&#8249;</button>
+      <div class="book-header">
+        <h2 id="book-title"></h2>
+        <div class="book-date" id="book-date"></div>
+        <div class="book-nav">
+          <button id="btn-prev-page" class="nav-btn">&#8249; 上一页</button>
+          <span id="page-indicator"></span>
+          <button id="btn-next-page" class="nav-btn">下一页 &#8250;</button>
+        </div>
+      </div>
+      <div class="book-actions">
+        <button id="btn-add-record" class="icon-btn" title="添加记录">&#43;</button>
+        <button id="btn-book-menu" class="icon-btn" title="更多">&#8942;</button>
+      </div>
+    </div>
+    <div class="book-container" id="book-container">
+      <div class="book-spread" id="book-spread">
+        <div class="book-page left-page" id="page-left">
+          <div class="page-content" id="page-left-content"></div>
+          <div class="page-footer" id="page-left-footer"></div>
+        </div>
+        <div class="book-page right-page" id="page-right">
+          <div class="page-content" id="page-right-content"></div>
+          <div class="page-footer" id="page-right-footer"></div>
+        </div>
+      </div>
+    </div>
+    <div class="book-total" id="book-total"></div>
+  </div>
+
+  <!-- 搜索页 -->
+  <div id="page-search" class="page">
+    <div class="topbar">
+      <button id="btn-search-back" class="icon-btn back-btn" title="返回">&#8249;</button>
+      <div class="search-input-wrap">
+        <input type="text" id="search-input" placeholder="输入姓名搜索..." autocomplete="off">
+        <button id="btn-search-clear" class="icon-btn" style="display:none">&times;</button>
+      </div>
+    </div>
+    <div class="search-results" id="search-results"></div>
+  </div>
+
+  <!-- 弹窗：添加/编辑账本 -->
+  <div class="modal-overlay" id="modal-book" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-book-title">添加账本</h3>
+        <button class="icon-btn modal-close" data-modal="modal-book">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>账本名称</label>
+          <input type="text" id="input-book-title" placeholder="如：结婚、满月酒、乔迁">
+        </div>
+        <div class="form-group">
+          <label>事项类型</label>
+          <input type="text" id="input-book-category" placeholder="如：结婚、满月酒">
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="text" id="input-book-date" placeholder="如：2024年01月15日">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" id="input-book-note" placeholder="备注（可选）">
+        </div>
+        <div class="form-group">
+          <label>封面颜色</label>
+          <div class="cover-picker" id="cover-picker"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-book-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-book-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：添加/编辑记录 -->
+  <div class="modal-overlay" id="modal-record" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-record-title">添加记录</h3>
+        <button class="icon-btn modal-close" data-modal="modal-record">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" id="input-rec-name" placeholder="姓名">
+        </div>
+        <div class="form-group">
+          <label>礼金</label>
+          <input type="number" id="input-rec-amount" placeholder="金额" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>收支</label>
+          <div class="io-toggle" id="io-toggle">
+            <button class="io-btn active" data-io="收入">收入</button>
+            <button class="io-btn" data-io="支出">支出</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="text" id="input-rec-date" placeholder="如：2024年01月15日">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" id="input-rec-note" placeholder="备注（可选）">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-rec-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-rec-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：设置 -->
+  <div class="modal-overlay" id="modal-settings" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>&#x1F6E0; 设置</h3>
+        <button class="icon-btn modal-close" data-modal="modal-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h4>&#x1F4E4; 数据同步</h4>
+          <p class="settings-desc">与电脑版 MLT 同步数据（JSON 文件）</p>
+          <div class="settings-btns">
+            <button class="btn btn-cloud" id="btn-export-data">导出数据</button>
+            <button class="btn btn-cloud" id="btn-import-data">导入数据</button>
+          </div>
+          <input type="file" id="file-import" accept=".json" style="display:none">
+        </div>
+        <div class="settings-section">
+          <h4>&#x1F4CA; 每页行数</h4>
+          <div class="settings-row">
+            <label>翻书每页条数</label>
+            <input type="number" id="input-rows-per-page" min="4" max="20" value="12">
+          </div>
+        </div>
+        <div class="settings-section danger-section">
+          <h4>&#x26A0; 危险操作</h4>
+          <button class="btn btn-danger" id="btn-clear-all">清空所有数据</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-settings-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：记录详情/操作 -->
+  <div class="modal-overlay" id="modal-record-menu" style="display:none">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>记录操作</h3>
+        <button class="icon-btn modal-close" data-modal="modal-record-menu">&times;</button>
+      </div>
+      <div class="modal-body menu-list">
+        <button class="menu-item" id="menu-edit-record">&#x270F; 编辑</button>
+        <button class="menu-item" id="menu-delete-record">&#x1F5D1; 删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.24.2/dist/index.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/pinyin.js"></script>
+  <script src="js/shelf.js"></script>
+  <script src="js/book.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
