@@ -298,6 +298,21 @@ function bindEvents() {
     var fileInput = document.getElementById('file-import');
     if (fileInput) fileInput.click();
   });
+
+  // ---- 扫一扫导入 ----
+  bind('btn-qr-scan', 'click', function() {
+    closeModal('modal-settings');
+    QrScan.open();
+  });
+  bind('btn-qr-close', 'click', function() { QrScan.close(); });
+  bind('btn-qr-reset', 'click', function() { QrScan.reset(); });
+  bind('btn-qr-gallery', 'click', function() {
+    document.getElementById('qr-file').click();
+  });
+  bind('qr-file', 'change', function(e) {
+    QrScan.pickImages(e.target.files);
+    e.target.value = '';
+  });
   bind('file-import', 'change', function(e) {
     var file = e.target.files[0];
     if (file) {
@@ -329,7 +344,10 @@ function bindEvents() {
   // 点击遮罩层关闭弹窗（点击弹窗内容不关闭）
   document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
     overlay.addEventListener('click', function(e) {
-      if (e.target === overlay) overlay.style.display = 'none';
+      if (e.target === overlay) {
+        if (overlay.id === 'modal-qrscan') QrScan.close();
+        else overlay.style.display = 'none';
+      }
     });
   });
 }

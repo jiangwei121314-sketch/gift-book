@@ -58,50 +58,58 @@ function exportData() {
 }
 
 /**
- * 导入 JSON 数据
+ * 导入数据对象（文件导入 / 二维码扫码导入共用核心）
+ * data: 已解析的 { books: [...] }
+ */
+async function importDataObject(data) {
+  var books = data.books || [];
+
+  var cleanedBooks = books.map(function(b) {
+    return {
+      id: b.id || genId(),
+      title: b.title || '',
+      category: b.category || '',
+      event_date: b.event_date || '',
+      cover: b.cover || 'red',
+      cover_image: b.cover_image || '',
+      note: b.note || '',
+      photos: b.photos || {},
+      records: (b.records || []).map(function(r) {
+        return {
+          name: r.name || '',
+          amount: parseFloat(r.amount) || 0,
+          event: r.event || '',
+          date: r.date || '',
+          io_type: (r.io_type === '支出' ? '支出' : '收入'),
+          note: r.note || '',
+          page_no: parseInt(r.page_no) || 0,
+          seq: parseInt(r.seq) || 0,
+          marked: !!r.marked,
+        };
+      }),
+    };
+  });
+
+  AppState.books = cleanedBooks;
+  await saveAllBooks(cleanedBooks);
+  await saveConfig('lastUpdated', Date.now());
+  return cleanedBooks.length;
+}
+
+/**
+ * 导入 JSON 文件
  * 兼容电脑版 MLT 导出的 data.json 格式（含 base64 照片）
  */
 async function importData(file) {
-  if (!file) return;
+  if (!file) return false;
 
   return new Promise(function(resolve) {
     var reader = new FileReader();
     reader.onload = async function(e) {
       try {
         var data = JSON.parse(e.target.result);
-        var books = data.books || [];
-
-        var cleanedBooks = books.map(function(b) {
-          return {
-            id: b.id || genId(),
-            title: b.title || '',
-            category: b.category || '',
-            event_date: b.event_date || '',
-            cover: b.cover || 'red',
-            cover_image: b.cover_image || '',
-            note: b.note || '',
-            photos: b.photos || {},
-            records: (b.records || []).map(function(r) {
-              return {
-                name: r.name || '',
-                amount: parseFloat(r.amount) || 0,
-                event: r.event || '',
-                date: r.date || '',
-                io_type: (r.io_type === '支出' ? '支出' : '收入'),
-                note: r.note || '',
-                page_no: parseInt(r.page_no) || 0,
-                seq: parseInt(r.seq) || 0,
-                marked: !!r.marked,
-              };
-            }),
-          };
-        });
-
-        AppState.books = cleanedBooks;
-        await saveAllBooks(cleanedBooks);
-        await saveConfig('lastUpdated', Date.now());
-
-        showToast('成功导入 ' + cleanedBooks.length + ' 本账本');
+        var n = await importDataObject(data);
+        showToast('成功导入 ' + n + ' 本账本');
         resolve(true);
       } catch (err) {
         showToast('文件格式错误：' + err.message);

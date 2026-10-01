@@ -165,6 +165,7 @@
           <div class="settings-btns">
             <button class="btn btn-cloud" id="btn-export-data">导出数据</button>
             <button class="btn btn-cloud" id="btn-import-data">导入数据</button>
+            <button class="btn btn-cloud" id="btn-qr-scan">&#128247; 扫一扫导入</button>
           </div>
           <input type="file" id="file-import" accept=".json" style="display:none">
         </div>
@@ -182,6 +183,35 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" id="btn-settings-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：扫一扫导入 -->
+  <div class="modal-overlay" id="modal-qrscan" style="display:none">
+    <div class="modal modal-qr">
+      <div class="modal-header">
+        <h3>&#128247; 扫一扫导入</h3>
+        <button class="icon-btn" id="btn-qr-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="scan-stage">
+          <video id="qr-video" playsinline muted></video>
+          <canvas id="qr-canvas" style="display:none"></canvas>
+          <div class="qr-cam-fail" id="qr-cam-fail" style="display:none"></div>
+          <!-- 取景框装饰 -->
+          <div class="scan-frame"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <div class="qr-progress-wrap">
+          <div class="qr-progress-bar"><div id="qr-progress-fill"></div></div>
+          <div id="qr-progress-text" class="qr-progress-text">尚未扫描</div>
+        </div>
+        <p id="qr-status" class="qr-status">将二维码对准取景框，自动连续扫描</p>
+        <div class="qr-btns">
+          <button class="btn btn-secondary" id="btn-qr-reset">重新扫描</button>
+          <button class="btn btn-cloud" id="btn-qr-gallery">&#128444; 从相册选二维码图片</button>
+          <input type="file" id="qr-file" accept="image/*" multiple style="display:none">
+        </div>
       </div>
     </div>
   </div>
@@ -219,7 +249,13 @@
     _showError('Promise错误: ', (e.reason && e.reason.message) ? e.reason.message : String(e.reason));
   });
   </script>
-  <script src="https://unpkg.com/pinyin-pro@3/dist/pinyin-pro.umd.min.js"></script>
+  <script type="module">
+    // 拼音库本地 ESM → 桥接为全局 pinyinPro（module 自动延迟，早于用户操作）
+    import { pinyin } from './vendor/pinyin-pro.mjs';
+    window.pinyinPro = { pinyin: pinyin };
+  </script>
+  <script src="vendor/jsQR.js"></script>
+  <script src="vendor/pako.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/model.js"></script>
   <script src="js/pinyin.js"></script>
@@ -227,6 +263,7 @@
   <script src="js/book.js"></script>
   <script src="js/search.js"></script>
   <script src="js/io.js"></script>
+  <script src="js/qrscan.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
