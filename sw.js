@@ -4,7 +4,7 @@
  * 缓存所有静态资源，让 PWA 完全离线可用
  */
 
-var CACHE_NAME = 'gift-book-v17';
+var CACHE_NAME = 'gift-book-v18';
 var STATIC_ASSETS = [
   './',
   './index.html',

@@ -36,9 +36,9 @@ function renderBook() {
   if (!book) { showPage('page-shelf'); return; }
 
   document.getElementById('book-title').textContent = book.title;
-  document.getElementById('book-date').textContent = book.event_date || '';
-  document.getElementById('book-lunar').textContent =
-    lunarLabel(book.event_date || '');
+  var lunar = lunarLabel(book.event_date || '');
+  document.getElementById('book-date').textContent =
+    (book.event_date || '') + (lunar ? '（' + lunar + '）' : '');
 
   var records = book.records || [];
   var rowsPerPage = BookState.rowsPerPage;
