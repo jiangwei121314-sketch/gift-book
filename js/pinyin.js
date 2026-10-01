@@ -1,28 +1,29 @@
 /**
  * 拼音匹配模块 - 与电脑版 suggest_group 逻辑对齐
- * 使用 pinyin-pro CDN 库
+ * 使用 pinyin-pro UMD 版（暴露全局变量 pinyinPro）
  */
 
 // 声母/韵母易混组
-const _FINAL_GROUPS = [['in','ing'],['en','eng'],['an','ang'],['ian','iang'],['uan','uang']];
-const _INITIAL_GROUPS = [['zh','z'],['ch','c'],['sh','s'],['n','l'],['f','h']];
+var _FINAL_GROUPS = [['in','ing'],['en','eng'],['an','ang'],['ian','iang'],['uan','uang']];
+var _INITIAL_GROUPS = [['zh','z'],['ch','c'],['sh','s'],['n','l'],['f','h']];
 
-/** 获取汉字拼音（无声调） */
+/** 获取汉字拼音数组（无声调） */
 function getPinyin(char) {
+  // pinyinPro UMD 版暴露 pinyinPro.pinyin()
   if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
     return pinyinPro.pinyin(char, { toneType: 'none', type: 'array' });
   }
-  // 降级：如果 CDN 未加载，返回原字符
+  // 降级：返回原字符
   return [char];
 }
 
 /** 单个音节是否近似 */
 function fuzzySyllable(a, b) {
   if (a === b) return true;
-  const ia = a[0], ib = b[0];
-  const fa = a.slice(1), fb = b.slice(1);
-  const iniEq = ia === ib || _INITIAL_GROUPS.some(g => g.includes(ia) && g.includes(ib));
-  const finEq = fa === fb || _FINAL_GROUPS.some(g => g.includes(fa) && g.includes(fb));
+  var ia = a[0], ib = b[0];
+  var fa = a.slice(1), fb = b.slice(1);
+  var iniEq = ia === ib || _INITIAL_GROUPS.some(function(g) { return g.indexOf(ia) >= 0 && g.indexOf(ib) >= 0; });
+  var finEq = fa === fb || _FINAL_GROUPS.some(function(g) { return g.indexOf(fa) >= 0 && g.indexOf(fb) >= 0; });
   return iniEq && finEq;
 }
 
@@ -33,41 +34,39 @@ function fuzzySyllable(a, b) {
 function suggestGroup(targetName, allNames) {
   if (!targetName || !allNames || allNames.length === 0) return [];
 
-  let targetPy;
+  var targetPy;
   try {
     targetPy = getPinyin(targetName);
-  } catch { return []; }
+  } catch (e) { return []; }
 
-  const n = targetPy.length;
-  const results = [];
+  var n = targetPy.length;
+  var results = [];
 
-  for (const other of allNames) {
+  for (var i = 0; i < allNames.length; i++) {
+    var other = allNames[i];
     if (other === targetName) continue;
 
-    let otherPy;
+    var otherPy;
     try {
       otherPy = getPinyin(other);
-    } catch { continue; }
+    } catch (e) { continue; }
 
     if (otherPy.length !== n) continue;
 
-    // 统计完全匹配数
-    let eq = 0;
-    for (let i = 0; i < n; i++) {
-      if (targetPy[i] === otherPy[i]) eq++;
+    var eq = 0;
+    for (var j = 0; j < n; j++) {
+      if (targetPy[j] === otherPy[j]) eq++;
     }
 
     if (eq === n) {
       results.push({ name: other, type: '同音' });
     } else if (n >= 2 && eq >= n - 1) {
-      // 两字名：名字部分必须 fuzzy
       if (n === 2 && !fuzzySyllable(targetPy[1], otherPy[1])) continue;
       results.push({ name: other, type: '音近' });
     } else if (n >= 2) {
-      // 每个字拼音都近似
-      let allFuzzy = true;
-      for (let i = 0; i < n; i++) {
-        if (!fuzzySyllable(targetPy[i], otherPy[i])) {
+      var allFuzzy = true;
+      for (var j = 0; j < n; j++) {
+        if (!fuzzySyllable(targetPy[j], otherPy[j])) {
           allFuzzy = false;
           break;
         }

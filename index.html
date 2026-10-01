@@ -9,10 +9,10 @@
   <title>人情往来簿</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
-  <!-- 书架页 -->
+  <!-- 书架页：左卡片 + 右侧可折叠总表 -->
   <div id="page-shelf" class="page active">
     <div class="topbar">
       <div class="topbar-title">
@@ -25,51 +25,77 @@
         <button id="btn-settings" class="icon-btn" title="设置">&#9881;</button>
       </div>
     </div>
-    <div class="shelf-summary" id="shelf-summary"></div>
-    <div class="shelf-grid" id="shelf-grid"></div>
-    <div class="empty-hint" id="shelf-empty" style="display:none">
-      <p>还没有账本</p>
-      <p>点击右上角 + 创建第一本</p>
+    <div class="shelf-body" id="shelf-body">
+      <!-- 账本卡片（占满全宽） -->
+      <div class="shelf-left" id="shelf-left">
+        <div class="shelf-summary" id="shelf-summary"></div>
+        <div class="shelf-grid" id="shelf-grid"></div>
+        <div class="empty-hint" id="shelf-empty" style="display:none">
+          <p>还没有账本</p><p>点击右上角 + 创建第一本</p>
+        </div>
+      </div>
+      <!-- 右侧：总表（悬浮覆盖，不挤压卡片） -->
+      <div class="shelf-right-toggle" id="shelf-right-toggle">&#171;</div>
+      <div class="shelf-right-panel" id="shelf-right-panel">
+        <div class="shelf-right-header">
+          <span>总表</span>
+          <button class="collapse-btn" id="btn-collapse-table">&#187;</button>
+        </div>
+        <div class="shelf-right-body">
+          <table class="shelf-table">
+            <thead><tr>
+              <th>序号</th><th>姓名</th><th>礼金</th><th>事项</th>
+              <th>页码</th><th>日期</th><th>收支</th><th>备注</th>
+            </tr></thead>
+            <tbody id="shelf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 翻书页 -->
+  <!-- 翻书页：单页模式（搜索栏+照片+表格） -->
   <div id="page-book" class="page">
-    <div class="topbar book-topbar">
-      <button id="btn-book-back" class="icon-btn back-btn" title="返回">&#8249;</button>
-      <div class="book-header">
-        <h2 id="book-title"></h2>
-        <div class="book-date" id="book-date"></div>
-        <div class="book-nav">
-          <button id="btn-prev-page" class="nav-btn">&#8249; 上一页</button>
-          <span id="page-indicator"></span>
-          <button id="btn-next-page" class="nav-btn">下一页 &#8250;</button>
-        </div>
+    <div class="topbar">
+      <button id="btn-book-back" class="icon-btn back-btn">&#8249;</button>
+      <div class="search-input-wrap">
+        <input type="text" id="book-search-input" placeholder="输入姓名搜索..." autocomplete="off">
+        <button id="btn-book-search-clear" class="icon-btn" style="display:none">&times;</button>
       </div>
-      <div class="book-actions">
-        <button id="btn-add-record" class="icon-btn" title="添加记录">&#43;</button>
-        <button id="btn-book-menu" class="icon-btn" title="更多">&#8942;</button>
+      <button id="btn-add-record" class="icon-btn" title="添加记录" style="flex-shrink:0">&#43;</button>
+    </div>
+    <div class="book-info-bar" id="book-info-bar">
+      <div class="book-info-title" id="book-title"></div>
+      <div class="book-info-date" id="book-date"></div>
+      <div class="book-nav">
+        <button id="btn-prev-page" class="nav-btn">&#8249; 上一页</button>
+        <span id="page-indicator"></span>
+        <button id="btn-next-page" class="nav-btn">下一页 &#8250;</button>
       </div>
     </div>
-    <div class="book-container" id="book-container">
-      <div class="book-spread" id="book-spread">
-        <div class="book-page left-page" id="page-left">
-          <div class="page-content" id="page-left-content"></div>
-          <div class="page-footer" id="page-left-footer"></div>
-        </div>
-        <div class="book-page right-page" id="page-right">
-          <div class="page-content" id="page-right-content"></div>
-          <div class="page-footer" id="page-right-footer"></div>
-        </div>
+    <div class="book-body" id="book-body">
+      <div class="photo-single" id="photo-single">
+        <div class="photo-label" id="photo-label"></div>
+        <div class="photo-content" id="photo-content">暂无照片</div>
+      </div>
+      <div class="table-single">
+        <table class="flip-table">
+          <thead><tr>
+            <th>序号</th><th>姓名</th><th>礼金</th><th>事项</th>
+            <th>页码</th><th>日期</th><th>收支</th><th>备注</th>
+          </tr></thead>
+          <tbody id="flip-tbody"></tbody>
+        </table>
+        <div class="page-total" id="page-total"></div>
       </div>
     </div>
-    <div class="book-total" id="book-total"></div>
+    <div class="book-total-bar" id="book-total"></div>
   </div>
 
   <!-- 搜索页 -->
   <div id="page-search" class="page">
     <div class="topbar">
-      <button id="btn-search-back" class="icon-btn back-btn" title="返回">&#8249;</button>
+      <button id="btn-search-back" class="icon-btn back-btn">&#8249;</button>
       <div class="search-input-wrap">
         <input type="text" id="search-input" placeholder="输入姓名搜索..." autocomplete="off">
         <button id="btn-search-clear" class="icon-btn" style="display:none">&times;</button>
@@ -86,26 +112,11 @@
         <button class="icon-btn modal-close" data-modal="modal-book">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>账本名称</label>
-          <input type="text" id="input-book-title" placeholder="如：结婚、满月酒、乔迁">
-        </div>
-        <div class="form-group">
-          <label>事项类型</label>
-          <input type="text" id="input-book-category" placeholder="如：结婚、满月酒">
-        </div>
-        <div class="form-group">
-          <label>日期</label>
-          <input type="text" id="input-book-date" placeholder="如：2024年01月15日">
-        </div>
-        <div class="form-group">
-          <label>备注</label>
-          <input type="text" id="input-book-note" placeholder="备注（可选）">
-        </div>
-        <div class="form-group">
-          <label>封面颜色</label>
-          <div class="cover-picker" id="cover-picker"></div>
-        </div>
+        <div class="form-group"><label>账本名称</label><input type="text" id="input-book-title" placeholder="如：结婚、满月酒、乔迁"></div>
+        <div class="form-group"><label>事项类型</label><input type="text" id="input-book-category" placeholder="如：结婚、满月酒"></div>
+        <div class="form-group"><label>日期</label><input type="text" id="input-book-date" placeholder="如：2024年01月15日"></div>
+        <div class="form-group"><label>备注</label><input type="text" id="input-book-note" placeholder="备注（可选）"></div>
+        <div class="form-group"><label>封面颜色</label><div class="cover-picker" id="cover-picker"></div></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-book-cancel">取消</button>
@@ -122,29 +133,16 @@
         <button class="icon-btn modal-close" data-modal="modal-record">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label>姓名</label>
-          <input type="text" id="input-rec-name" placeholder="姓名">
-        </div>
-        <div class="form-group">
-          <label>礼金</label>
-          <input type="number" id="input-rec-amount" placeholder="金额" step="0.01">
-        </div>
-        <div class="form-group">
-          <label>收支</label>
-          <div class="io-toggle" id="io-toggle">
+        <div class="form-group"><label>姓名</label><input type="text" id="input-rec-name" placeholder="姓名"></div>
+        <div class="form-group"><label>礼金</label><input type="number" id="input-rec-amount" placeholder="金额" step="0.01"></div>
+        <div class="form-group"><label>收支</label>
+          <div class="io-toggle">
             <button class="io-btn active" data-io="收入">收入</button>
             <button class="io-btn" data-io="支出">支出</button>
           </div>
         </div>
-        <div class="form-group">
-          <label>日期</label>
-          <input type="text" id="input-rec-date" placeholder="如：2024年01月15日">
-        </div>
-        <div class="form-group">
-          <label>备注</label>
-          <input type="text" id="input-rec-note" placeholder="备注（可选）">
-        </div>
+        <div class="form-group"><label>日期</label><input type="text" id="input-rec-date" placeholder="如：2024年01月15日"></div>
+        <div class="form-group"><label>备注</label><input type="text" id="input-rec-note" placeholder="备注（可选）"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-rec-cancel">取消</button>
@@ -188,7 +186,7 @@
     </div>
   </div>
 
-  <!-- 弹窗：记录详情/操作 -->
+  <!-- 弹窗：记录操作 -->
   <div class="modal-overlay" id="modal-record-menu" style="display:none">
     <div class="modal modal-sm">
       <div class="modal-header">
@@ -202,10 +200,26 @@
     </div>
   </div>
 
-  <!-- Toast 提示 -->
   <div class="toast" id="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.24.2/dist/index.js"></script>
+  <script>
+  // 全局错误捕获（调试用）
+  function _showError(prefix, msg) {
+    var d = document.createElement('div');
+    d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:red;color:#fff;padding:8px;font-size:12px;z-index:9999;word-break:break-all;';
+    d.textContent = prefix + msg;
+    document.body.appendChild(d);
+    setTimeout(function() { d.remove(); }, 6000);
+  }
+  window.onerror = function(msg, url, line) {
+    _showError('JS错误: ', msg + ' @' + (url||'').split('/').pop() + ':' + line);
+    return false;
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    _showError('Promise错误: ', (e.reason && e.reason.message) ? e.reason.message : String(e.reason));
+  });
+  </script>
+  <script src="https://unpkg.com/pinyin-pro@3/dist/pinyin-pro.umd.min.js"></script>
   <script src="js/db.js"></script>
   <script src="js/model.js"></script>
   <script src="js/pinyin.js"></script>

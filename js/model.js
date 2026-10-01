@@ -3,13 +3,13 @@
  * 封面颜色映射与桌面版一致
  */
 
-const COVER_COLORS = {
+var COVER_COLORS = {
   red: '#9c2f2a', gold: '#9a6b22', green: '#2f6b52',
   blue: '#2f5d8a', purple: '#6b3f8a', brown: '#7a4a2a',
   gray: '#4a4a4a', pink: '#b05a7a',
 };
 
-const COVER_NAMES = {
+var COVER_NAMES = {
   red: '喜庆红', gold: '富贵金', green: '翠竹绿',
   blue: '天空蓝', purple: '优雅紫', brown: '檀木棕',
   gray: '墨玉灰', pink: '桃花粉',
@@ -52,7 +52,7 @@ function createRecord(name, amount, ioType, date, note, pageNo, seq) {
 
 /** 计算账本总金额 */
 function bookSumAmount(book) {
-  return (book.records || []).reduce((s, r) => {
+  return (book.records || []).reduce(function(s, r) {
     return s + (r.io_type === '支出' ? -Math.abs(r.amount) : Math.abs(r.amount));
   }, 0);
 }
@@ -65,29 +65,31 @@ function bookRecordCount(book) {
 /** 格式化金额显示 */
 function formatAmount(amount) {
   if (!amount && amount !== 0) return '';
-  const abs = Math.abs(amount);
-  const formatted = abs % 1 === 0 ? abs.toLocaleString() : abs.toFixed(2);
-  return amount < 0 ? '-¥' + formatted : '¥' + formatted;
+  var abs = Math.abs(amount);
+  var formatted = abs % 1 === 0 ? abs.toLocaleString() : abs.toFixed(2);
+  return amount < 0 ? '-\u00a5' + formatted : '\u00a5' + formatted;
 }
 
 /** 收集所有不重复的人名 */
 function collectAllNames(books) {
-  const names = new Set();
-  for (const book of books) {
-    for (const rec of (book.records || [])) {
-      if (rec.name) names.add(rec.name);
+  var names = new Set();
+  for (var i = 0; i < books.length; i++) {
+    var recs = books[i].records || [];
+    for (var j = 0; j < recs.length; j++) {
+      if (recs[j].name) names.add(recs[j].name);
     }
   }
-  return [...names];
+  return Array.from(names);
 }
 
 /** 按姓名搜索记录 */
 function findRecordsByName(books, name) {
-  const results = [];
-  for (const book of books) {
-    for (const rec of (book.records || [])) {
-      if (rec.name === name) {
-        results.push({ book, record: rec });
+  var results = [];
+  for (var i = 0; i < books.length; i++) {
+    var recs = books[i].records || [];
+    for (var j = 0; j < recs.length; j++) {
+      if (recs[j].name === name) {
+        results.push({ book: books[i], record: recs[j] });
       }
     }
   }

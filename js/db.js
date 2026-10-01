@@ -1,107 +1,159 @@
 /**
- * IndexedDB 数据持久化层
+ * IndexedDB 数据持久化层（带 localStorage 降级）
+ * file:// 直接打开或 IndexedDB 不可用时，自动降级到 localStorage
  * 与电脑版 data.json 格式完全兼容
  */
-const DB_NAME = 'gift_book_db';
-const DB_VERSION = 1;
-const STORE_BOOKS = 'books';
-const STORE_META = 'meta';
+var DB_NAME = 'gift_book_db';
+var DB_VERSION = 1;
+var STORE_BOOKS = 'books';
+var STORE_META = 'meta';
 
-let _db = null;
+var _db = null;
+var _useLocalStorage = false;
+var LS_BOOKS_KEY = 'gift_book_books';
+var LS_META_PREFIX = 'gift_book_meta_';
 
 function openDB() {
-  return new Promise((resolve, reject) => {
+  return new Promise(function(resolve, reject) {
     if (_db) { resolve(_db); return; }
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_BOOKS)) {
-        db.createObjectStore(STORE_BOOKS, { keyPath: 'id' });
+    try {
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_BOOKS)) {
+          db.createObjectStore(STORE_BOOKS, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_META)) {
+          db.createObjectStore(STORE_META, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = function(e) { _db = e.target.result; resolve(_db); };
+      req.onerror = function(e) { reject(e.target.error || new Error('IDB error')); };
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/* ---- localStorage 降级实现 ---- */
+function _lsGetBooks() {
+  try {
+    var raw = localStorage.getItem(LS_BOOKS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function _lsSetBooks(books) {
+  localStorage.setItem(LS_BOOKS_KEY, JSON.stringify(books));
+}
+
+/** 检测并选择存储模式 */
+function _ensureStorage() {
+  if (_useLocalStorage) return Promise.resolve();
+  return openDB().then(function() {
+    _useLocalStorage = false;
+  }).catch(function() {
+    _useLocalStorage = true;
+  });
+}
+
+function dbGetAll(storeName) {
+  return _ensureStorage().then(function() {
+    if (_useLocalStorage) {
+      return storeName === STORE_BOOKS ? _lsGetBooks() : [];
+    }
+    return new Promise(function(resolve, reject) {
+      var tx = _db.transaction(storeName, 'readonly');
+      var req = tx.objectStore(storeName).getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { reject(req.error); };
+    });
+  });
+}
+
+function dbPut(storeName, data) {
+  return _ensureStorage().then(function() {
+    if (_useLocalStorage) {
+      if (storeName === STORE_BOOKS) {
+        var books = _lsGetBooks();
+        var found = false;
+        for (var i = 0; i < books.length; i++) {
+          if (books[i].id === data.id) { books[i] = data; found = true; break; }
+        }
+        if (!found) books.push(data);
+        _lsSetBooks(books);
+      } else if (storeName === STORE_META) {
+        localStorage.setItem(LS_META_PREFIX + data.key, JSON.stringify(data.value));
       }
-      if (!db.objectStoreNames.contains(STORE_META)) {
-        db.createObjectStore(STORE_META, { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
-    req.onerror = (e) => reject(e.target.error);
+      return;
+    }
+    return new Promise(function(resolve, reject) {
+      var tx = _db.transaction(storeName, 'readwrite');
+      var req = tx.objectStore(storeName).put(data);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
   });
 }
 
-async function dbGetAll(storeName) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
+function dbClear(storeName) {
+  return _ensureStorage().then(function() {
+    if (_useLocalStorage) {
+      if (storeName === STORE_BOOKS) _lsSetBooks([]);
+      return;
+    }
+    return new Promise(function(resolve, reject) {
+      var tx = _db.transaction(storeName, 'readwrite');
+      var req = tx.objectStore(storeName).clear();
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { reject(req.error); };
+    });
   });
 }
 
-async function dbPut(storeName, data) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).put(data);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+function dbGetMeta(key, defaultVal) {
+  return _ensureStorage().then(function() {
+    if (_useLocalStorage) {
+      var raw = localStorage.getItem(LS_META_PREFIX + key);
+      if (raw === null) return defaultVal;
+      try { return JSON.parse(raw); } catch (e) { return defaultVal; }
+    }
+    return new Promise(function(resolve) {
+      var tx = _db.transaction(STORE_META, 'readonly');
+      var req = tx.objectStore(STORE_META).get(key);
+      req.onsuccess = function() {
+        resolve(req.result ? req.result.value : defaultVal);
+      };
+      req.onerror = function() { resolve(defaultVal); };
+    });
   });
 }
 
-async function dbDelete(storeName, key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+function dbSetMeta(key, value) {
+  return dbPut(STORE_META, { key: key, value: value });
+}
+
+/** 保存所有账本 */
+function saveAllBooks(books) {
+  return dbClear(STORE_BOOKS).then(function() {
+    var chain = Promise.resolve();
+    books.forEach(function(book) {
+      chain = chain.then(function() { return dbPut(STORE_BOOKS, book); });
+    });
+    return chain;
   });
 }
 
-async function dbClear(storeName) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).clear();
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function dbGetMeta(key, defaultVal) {
-  const db = await openDB();
-  return new Promise((resolve) => {
-    const tx = db.transaction(STORE_META, 'readonly');
-    const req = tx.objectStore(STORE_META).get(key);
-    req.onsuccess = () => {
-      resolve(req.result ? req.result.value : defaultVal);
-    };
-    req.onerror = () => resolve(defaultVal);
-  });
-}
-
-async function dbSetMeta(key, value) {
-  return dbPut(STORE_META, { key, value });
-}
-
-/** 保存所有账本到 IndexedDB */
-async function saveAllBooks(books) {
-  await dbClear(STORE_BOOKS);
-  for (const book of books) {
-    await dbPut(STORE_BOOKS, book);
-  }
-}
-
-/** 从 IndexedDB 加载所有账本 */
-async function loadAllBooks() {
+/** 加载所有账本 */
+function loadAllBooks() {
   return dbGetAll(STORE_BOOKS);
 }
 
 /** 获取配置 */
-async function getConfig(key, defaultVal) {
+function getConfig(key, defaultVal) {
   return dbGetMeta(key, defaultVal);
 }
 
 /** 保存配置 */
-async function saveConfig(key, value) {
+function saveConfig(key, value) {
   return dbSetMeta(key, value);
 }

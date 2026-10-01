@@ -4,8 +4,8 @@
  * 缓存所有静态资源，让 PWA 完全离线可用
  */
 
-const CACHE_NAME = 'gift-book-v1';
-const STATIC_ASSETS = [
+var CACHE_NAME = 'gift-book-v10';
+var STATIC_ASSETS = [
   './',
   './index.html',
   './css/style.css',
@@ -18,39 +18,47 @@ const STATIC_ASSETS = [
   './js/io.js',
   './js/app.js',
   './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
 ];
 
 // 安装：预缓存静态资源
-self.addEventListener('install', (e) => {
+self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+      .then(function(cache) { return cache.addAll(STATIC_ASSETS); })
+      .then(function() { return self.skipWaiting(); })
   );
 });
 
 // 激活：清理旧缓存
-self.addEventListener('activate', (e) => {
+self.addEventListener('activate', function(e) {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE_NAME; })
+            .map(function(k) { return caches.delete(k); })
+      );
+    }).then(function() { return self.clients.claim(); })
   );
 });
 
-// 请求拦截：优先缓存，缓存未命中则网络请求
-self.addEventListener('fetch', (e) => {
+// 请求拦截
+self.addEventListener('fetch', function(e) {
+  var url = e.request.url;
+
   // CDN 请求（pinyin-pro）缓存优先
-  if (e.request.url.includes('cdn.jsdelivr.net')) {
+  if (url.includes('cdn.jsdelivr.net') || url.includes('unpkg.com')) {
     e.respondWith(
-      caches.match(e.request).then(cached => {
+      caches.match(e.request).then(function(cached) {
         if (cached) return cached;
-        return fetch(e.request).then(resp => {
+        return fetch(e.request).then(function(resp) {
           if (resp.ok) {
-            const clone = resp.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+            var clone = resp.clone();
+            caches.open(CACHE_NAME).then(function(cache) { cache.put(e.request, clone); });
           }
           return resp;
         });
@@ -61,11 +69,11 @@ self.addEventListener('fetch', (e) => {
 
   // 本地资源：缓存优先，网络回退
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      return cached || fetch(e.request).then(resp => {
+    caches.match(e.request).then(function(cached) {
+      return cached || fetch(e.request).then(function(resp) {
         if (resp.ok && e.request.method === 'GET') {
-          const clone = resp.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(e.request, clone); });
         }
         return resp;
       });
