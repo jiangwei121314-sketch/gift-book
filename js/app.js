@@ -479,6 +479,7 @@ function init() {
     initIoToggle();
     bindEvents();
     initEdgeSwipe();
+    initToggleHandle();
   } catch (e) {
     console.error('事件绑定失败:', e);
   }

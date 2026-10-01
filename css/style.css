@@ -118,6 +118,9 @@ html, body {
 }
 .book-card-info {
   color: rgba(255,255,255,0.72); font-size: 11px;
+}
+.book-card-lunar {
+  color: rgba(255,255,255,0.52); font-size: 10px;
   margin-bottom: 2px;
 }
 .book-card-amount-row {
@@ -152,11 +155,17 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700; cursor: pointer;
   border-left: 1px solid #c9b88e;
-  user-select: none;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
   border-radius: 8px 0 0 8px;
   z-index: 5;
+  transition: background 0.15s ease;
 }
 .shelf-right-toggle:active { background: #c9b88e; }
+.shelf-right-toggle.dragging {
+  background: #c9b88e; cursor: ns-resize; z-index: 56;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+}
 .shelf-right-panel {
   position: absolute;
   top: 0; right: 0; bottom: 0;
@@ -222,6 +231,7 @@ html, body {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .book-info-date { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+.book-info-lunar { font-size: 11px; opacity: 0.55; margin-top: 1px; }
 .book-nav {
   display: flex; align-items: center; justify-content: center;
   gap: 12px; padding: 8px 0 0;
@@ -496,6 +506,8 @@ html, body {
 .btn {
   padding: 10px 20px; border: none; border-radius: 8px;
   font-size: 15px; cursor: pointer; font-weight: 500;
+  box-sizing: border-box; line-height: 1.2;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .btn:active { opacity: 0.8; }
 .btn-primary { background: var(--topbar-bg); color: var(--topbar-text); }
@@ -511,11 +523,15 @@ html, body {
 .settings-desc { font-size: 12px; color: var(--text-light); margin-bottom: 10px; }
 .settings-btns { display: flex; gap: 10px; flex-wrap: wrap; }
 /* 原生文件选择按钮（透明 input 覆盖在视觉按钮上，独立模式直接点原生） */
-.file-btn-wrap { position: relative; flex: 1; min-width: 96px; }
-.file-btn-wrap .btn { width: 100%; text-align: center; }
+.file-btn-wrap { position: relative; flex: 1; min-width: 96px; display: flex; }
+.file-btn-wrap .btn {
+  width: 100%; flex: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; white-space: nowrap;
+}
 .file-btn-wrap input[type="file"] {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: 0; cursor: pointer; font-size: 0;
+  opacity: 0; cursor: pointer; font-size: 0; z-index: 2;
 }
 /* 边缘滑动返回浮动提示 */
 #edge-back-hint {

@@ -37,6 +37,8 @@ function renderBook() {
 
   document.getElementById('book-title').textContent = book.title;
   document.getElementById('book-date').textContent = book.event_date || '';
+  document.getElementById('book-lunar').textContent =
+    lunarLabel(book.event_date || '');
 
   var records = book.records || [];
   var rowsPerPage = BookState.rowsPerPage;
