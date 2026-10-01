@@ -8,6 +8,7 @@
  */
 var QrScan = (function() {
   var FRAME_RE = /^GB1\|(\d+)\|(\d+)\|([A-Za-z0-9+/=]+)$/;
+  var TUNNEL_RE = /^GBT\|(https:\/\/\S+)$/;
 
   var _stream = null;
   var _raf = null;
@@ -61,6 +62,7 @@ var QrScan = (function() {
   function resetState() {
     _chunks = {};
     _total = null;
+    _importing = false;
     updateProgress();
     var status = document.getElementById('qr-status');
     status.textContent = '将二维码对准取景框，自动连续扫描';
@@ -93,8 +95,21 @@ var QrScan = (function() {
       video.play();
       _running = true;
       _raf = requestAnimationFrame(tick);
-    }).catch(function() {
-      showCamFail('无法打开相机（请允许相机权限），也可用相册图片识别');
+    }).catch(function(err) {
+      var name = err && err.name ? err.name : '';
+      var msg;
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        msg = '相机权限被拒绝。请在手机设置中允许（苹果：设置→Safari→相机；安卓：设置→应用→浏览器→权限→相机），然后点「重新扫描」';
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        msg = '未检测到相机设备，可改用「从相册选二维码图片」';
+      } else if (name === 'NotReadableError') {
+        msg = '相机被其他应用占用，请关掉手电筒/相机/视频应用后点「重新扫描」';
+      } else if (window.isSecureContext === false) {
+        msg = '当前网址不是安全连接（需 https:// 开头），相机被禁用。请用 GitHub 的 https 网址打开';
+      } else {
+        msg = '无法打开相机（' + name + '），可改用「从相册选二维码图片」';
+      }
+      showCamFail(msg);
     });
   }
 
@@ -139,8 +154,49 @@ var QrScan = (function() {
     _raf = requestAnimationFrame(tick);
   }
 
+  var _importing = false;
+
+  /** 网址码（GBT）：停止相机 → 从临时云通道下载含照片数据 → 导入 */
+  function fetchAndImport(url) {
+    if (_importing) return;
+    _importing = true;
+    stopCamera();
+    var status = document.getElementById('qr-status');
+    status.textContent = '已识别，正在下载含照片数据（约十几秒，请勿关闭）…';
+
+    var timeoutP = new Promise(function(_, reject) {
+      setTimeout(function() { reject(new Error('下载超时')); }, 90000);
+    });
+
+    Promise.race([fetch(url, { cache: 'no-store' }), timeoutP])
+      .then(function(resp) {
+        if (!resp.ok) throw new Error('服务器返回 ' + resp.status);
+        return resp.json();
+      })
+      .then(function(data) {
+        return importDataObject(data);
+      })
+      .then(function(n) {
+        closeScan();
+        renderShelf();
+        showPage('page-shelf');
+        showToast('扫码秒传成功：' + n + ' 本账本（含照片）');
+      })
+      .catch(function(e) {
+        _importing = false;
+        var msg = (e && e.message) ? e.message : String(e);
+        status.textContent = '下载失败：' + msg + '。请点「重新扫描」或改用 JSON 文件';
+      });
+  }
+
   /** 处理一个识别到的字符串（相机 / 相册共用）。返回是否为本格式帧。 */
   function handleCode(text) {
+    var tm = TUNNEL_RE.exec(text);
+    if (tm) {
+      fetchAndImport(tm[1]);
+      return true;
+    }
+
     var m = FRAME_RE.exec(text);
     if (!m) {
       var now = Date.now();
