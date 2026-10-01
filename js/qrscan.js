@@ -97,9 +97,16 @@ var QrScan = (function() {
       _raf = requestAnimationFrame(tick);
     }).catch(function(err) {
       var name = err && err.name ? err.name : '';
+      var standalone = (window.navigator.standalone === true) ||
+        (window.matchMedia &&
+         window.matchMedia('(display-mode: standalone)').matches);
       var msg;
       if (name === 'NotAllowedError' || name === 'SecurityError') {
-        msg = '相机权限被拒绝。请在手机设置中允许（苹果：设置→Safari→相机；安卓：设置→应用→浏览器→权限→相机），然后点「重新扫描」';
+        if (standalone) {
+          msg = '主屏幕模式相机被拒绝（权限与浏览器独立）。修复：①先用浏览器(Safari/Chrome)打开本网站 ②点扫一扫并选择允许相机 ③删掉主屏幕旧图标重新「添加到主屏幕」（苹果需iOS 14.5以上）。临时可用下方「相册选二维码」';
+        } else {
+          msg = '相机权限被拒绝。请在手机设置中允许（苹果：设置→Safari→相机；安卓：设置→应用→浏览器→权限→相机），然后点「重新扫描」';
+        }
       } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
         msg = '未检测到相机设备，可改用「从相册选二维码图片」';
       } else if (name === 'NotReadableError') {

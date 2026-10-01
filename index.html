@@ -164,10 +164,13 @@
           <p class="settings-desc">与电脑版 MLT 同步数据（JSON 文件）</p>
           <div class="settings-btns">
             <button class="btn btn-cloud" id="btn-export-data">导出数据</button>
-            <button class="btn btn-cloud" id="btn-import-data">导入数据</button>
+            <div class="file-btn-wrap">
+              <span class="btn btn-cloud">导入数据</span>
+              <input type="file" id="file-import"
+                     accept=".json,application/json">
+            </div>
             <button class="btn btn-cloud" id="btn-qr-scan">&#128247; 扫一扫导入</button>
           </div>
-          <input type="file" id="file-import" accept=".json" style="display:none">
         </div>
         <div class="settings-section">
           <h4>&#x1F4CA; 每页行数</h4>
@@ -209,8 +212,10 @@
         <p id="qr-status" class="qr-status">将二维码对准取景框，自动连续扫描</p>
         <div class="qr-btns">
           <button class="btn btn-secondary" id="btn-qr-reset">重新扫描</button>
-          <button class="btn btn-cloud" id="btn-qr-gallery">&#128444; 从相册选二维码图片</button>
-          <input type="file" id="qr-file" accept="image/*" multiple style="display:none">
+          <div class="file-btn-wrap">
+            <span class="btn btn-cloud">&#128444; 相册选二维码</span>
+            <input type="file" id="qr-file" accept="image/*" multiple>
+          </div>
         </div>
       </div>
     </div>

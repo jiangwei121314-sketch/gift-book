@@ -25,6 +25,55 @@ function showPage(pageId) {
   }
 }
 
+/* ========== 系统历史栈导航 ==========
+ * 每次页面切换写入浏览器/手机历史：
+ *  - 安卓：系统返回键 / 边缘内退 = 应用内返回
+ *  - 苹果：配合自加左边缘手势
+ * 状态：{p:'shelf'} / {p:'search', q:词} / {p:'book', b:账本, page, from}
+ */
+
+/** 跳搜索页（push 历史） */
+function navSearch(keyword) {
+  keyword = keyword || '';
+  document.getElementById('search-input').value = keyword;
+  document.getElementById('btn-search-clear').style.display =
+    keyword ? 'flex' : 'none';
+  performSearch(keyword);
+  showPage('page-search');
+  history.pushState({ p: 'search', q: keyword }, '');
+}
+
+/** 应用内返回：非主页状态走系统历史；否则执行 fallback */
+function navBack(fallback) {
+  var st = history.state;
+  if (st && st.p && st.p !== 'shelf') {
+    history.back();
+  } else if (fallback) {
+    fallback();
+  }
+}
+
+/** 按历史状态恢复页面（popstate：系统返回/前进触发） */
+function applyHistoryState(st) {
+  if (!st || st.p === 'shelf') {
+    renderShelf();
+    showPage('page-shelf');
+  } else if (st.p === 'search') {
+    var q = st.q || '';
+    document.getElementById('search-input').value = q;
+    document.getElementById('btn-search-clear').style.display =
+      q ? 'flex' : 'none';
+    performSearch(q);
+    showPage('page-search');
+  } else if (st.p === 'book') {
+    BookState.bookId = st.b;
+    BookState.currentPage = st.page || 0;
+    BookState.flipFrom = st.from || 'shelf';
+    showPage('page-book');
+    renderBook();
+  }
+}
+
 /** 打开/关闭弹窗 */
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -88,8 +137,7 @@ function bind(id, eventName, fn) {
 function bindEvents() {
   // ---- 书架页 ----
   bind('btn-search', 'click', function() {
-    _searchStack = []; // 从主页进入搜索，重置历史
-    showPage('page-search');
+    navSearch('');
     document.getElementById('search-input').focus();
   });
 
@@ -116,12 +164,10 @@ function bindEvents() {
 
   // ---- 翻书页 ----
   bind('btn-book-back', 'click', function() {
-    if (BookState.flipFrom === 'person') {
-      showPage('page-search');
-    } else {
+    navBack(function() {
       renderShelf();
       showPage('page-shelf');
-    }
+    });
   });
 
   bind('btn-prev-page', 'click', function() { flipPage(-1); });
@@ -143,9 +189,7 @@ function bindEvents() {
     clearTimeout(_bookSearchTimer);
     if (val) {
       _bookSearchTimer = setTimeout(function() {
-        document.getElementById('search-input').value = val;
-        showPage('page-search');
-        performSearch(val, true);
+        navSearch(val);
         document.getElementById('search-input').focus();
       }, 500);
     }
@@ -171,18 +215,10 @@ function bindEvents() {
 
   // ---- 搜索页 ----
   bind('btn-search-back', 'click', function() {
-    // 有上一次搜索 → 回到上一次搜索结果；没有 → 回主页
-    _searchStack.pop();
-    var prev = _searchStack[_searchStack.length - 1];
-    if (prev) {
-      var inp = document.getElementById('search-input');
-      inp.value = prev;
-      document.getElementById('btn-search-clear').style.display = 'flex';
-      performSearch(prev, false);
-    } else {
+    navBack(function() {
       renderShelf();
       showPage('page-shelf');
-    }
+    });
   });
 
   bind('search-input', 'input', function(e) {
@@ -294,10 +330,7 @@ function bindEvents() {
   bind('btn-export-data', 'click', function() {
     try { exportData(); } catch (err) { console.error(err); showToast('导出失败'); }
   });
-  bind('btn-import-data', 'click', function() {
-    var fileInput = document.getElementById('file-import');
-    if (fileInput) fileInput.click();
-  });
+  // 文件选择为原生控件直点（独立模式可靠），无需 JS 触发
 
   // ---- 扫一扫导入 ----
   bind('btn-qr-scan', 'click', function() {
@@ -306,9 +339,6 @@ function bindEvents() {
   });
   bind('btn-qr-close', 'click', function() { QrScan.close(); });
   bind('btn-qr-reset', 'click', function() { QrScan.reset(); });
-  bind('btn-qr-gallery', 'click', function() {
-    document.getElementById('qr-file').click();
-  });
   bind('qr-file', 'change', function(e) {
     QrScan.pickImages(e.target.files);
     e.target.value = '';
@@ -352,6 +382,85 @@ function bindEvents() {
   });
 }
 
+/** 左边缘内滑返回手势（手指从最左边缘向右拖） */
+function initEdgeSwipe() {
+  var EDGE_ZONE = 26;       // 触发起始区（距左屏边）
+  var TRIGGER_DX = 72;      // 拖过此距离即返回
+  var hint = null;
+  var startX = 0, startY = 0, tracking = false, fired = false;
+
+  function getHint() {
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'edge-back-hint';
+      hint.innerHTML = '&#8249;';
+      document.body.appendChild(hint);
+    }
+    return hint;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    var t = e.touches[0];
+    var tag = (e.target && e.target.tagName) ? e.target.tagName : '';
+    if (t.clientX <= EDGE_ZONE && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      // 只在有上一页时启用
+      var st = history.state;
+      if (st && st.p && st.p !== 'shelf') {
+        tracking = true;
+        fired = false;
+        startX = t.clientX;
+        startY = t.clientY;
+      }
+    }
+  }, { passive: true, capture: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!tracking) return;
+    var t = e.touches[0];
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+    // 以横向为主：拦截纵向页面滚动
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (!fired) e.preventDefault();
+      var h = getHint();
+      h.classList.add('active');
+      h.classList.toggle('ready', dx >= TRIGGER_DX);
+      h.textContent = dx >= TRIGGER_DX ? '\u2713 返回' : '\u2039';
+    } else {
+      tracking = false;
+      getHint().classList.remove('active', 'ready');
+    }
+  }, { passive: false, capture: true });
+
+  function endGesture() {
+    if (!tracking) return;
+    var h = getHint();
+    var wasReady = h.classList.contains('ready');
+    h.classList.remove('active', 'ready');
+    tracking = false;
+    if (wasReady && !fired) {
+      fired = true;
+      navBack(function() {
+        renderShelf();
+        showPage('page-shelf');
+      });
+    }
+  }
+  document.addEventListener('touchend', endGesture, { capture: true });
+  document.addEventListener('touchcancel', endGesture, { capture: true });
+}
+
+/** 系统返回/前进（安卓返回键同样触发） */
+function initHistory() {
+  if (!history.state || history.state.p !== 'shelf') {
+    history.replaceState({ p: 'shelf' }, '');
+  }
+  window.addEventListener('popstate', function(e) {
+    applyHistoryState(e.state);
+  });
+}
+
 /** 注册 Service Worker */
 function registerSW() {
   if ('serviceWorker' in navigator) {
@@ -361,11 +470,15 @@ function registerSW() {
 
 /** 应用启动（每一步都容错，保证事件绑定一定执行） */
 function init() {
+  // 历史栈 + 边缘手势（最先就绪）
+  try { initHistory(); } catch (e) { console.error('历史栈初始化失败:', e); }
+
   // 先绑定事件 —— 即使数据加载失败按钮也能用
   try {
     initCoverPicker();
     initIoToggle();
     bindEvents();
+    initEdgeSwipe();
   } catch (e) {
     console.error('事件绑定失败:', e);
   }

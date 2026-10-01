@@ -32,20 +32,9 @@ function collectEntries(books, name) {
   return entries;
 }
 
-/** 搜索历史栈：输入时更新栈顶，点击疑似卡片时压入新搜索 */
-var _searchStack = [];
-
-/** 执行搜索。push=true 压入历史；默认只更新栈顶 */
-function performSearch(keyword, push) {
+/** 执行搜索（页面渲染；历史栈由 navSearch / 疑似卡跳转负责） */
+function performSearch(keyword) {
   keyword = keyword || '';
-  if (push) {
-    if (_searchStack[_searchStack.length - 1] !== keyword) _searchStack.push(keyword);
-  } else if (_searchStack.length) {
-    _searchStack[_searchStack.length - 1] = keyword;
-  } else {
-    _searchStack.push(keyword);
-  }
-
   var container = document.getElementById('search-results');
   var clearBtn = document.getElementById('btn-search-clear');
 
@@ -101,20 +90,22 @@ function performSearch(keyword, push) {
       var bookId = row.dataset.bookId;
       var pageNo = parseInt(row.dataset.pageNo) || 0;
       if (bookId) {
-        BookState.currentPage = Math.max(0, Math.floor((pageNo - 1) / BookState.rowsPerPage) * BookState.rowsPerPage);
-        openBook(bookId, 'person');
+        var startPage = Math.max(0,
+          Math.floor((pageNo - 1) / BookState.rowsPerPage));
+        openBook(bookId, 'person', startPage);
       }
     });
   });
 
-  // 绑定疑似卡片点击：压入新的搜索（返回可回到上一个搜索）
+  // 绑定疑似卡片点击：写入新的历史（系统返回/边缘手势可回到上一个搜索）
   container.querySelectorAll('.maybe-card').forEach(function(card) {
     card.addEventListener('click', function() {
       var name = card.dataset.name;
       if (name) {
-        var inp = document.getElementById('search-input');
-        inp.value = name;
-        performSearch(name, true);
+        document.getElementById('search-input').value = name;
+        document.getElementById('btn-search-clear').style.display = 'flex';
+        performSearch(name);
+        history.pushState({ p: 'search', q: name }, '');
       }
     });
   });

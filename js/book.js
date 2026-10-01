@@ -11,11 +11,16 @@ var BookState = {
   _touchStartY: 0,
 };
 
-/** 打开账本 */
-function openBook(bookId, fromPage) {
+/** 打开账本（startPage=起始页，用于时间线跳转到对应页） */
+function openBook(bookId, fromPage, startPage) {
   BookState.bookId = bookId;
-  BookState.currentPage = 0;
+  BookState.currentPage = startPage || 0;
   BookState.flipFrom = fromPage || 'shelf';
+  history.pushState({
+    p: 'book', b: bookId,
+    page: BookState.currentPage,
+    from: BookState.flipFrom,
+  }, '');
   showPage('page-book');
   renderBook();
 }
@@ -157,17 +162,27 @@ function flipPage(direction) {
   var newPage = BookState.currentPage + direction;
   if (newPage < 0 || newPage >= totalPages) return;
   BookState.currentPage = newPage;
+  // 更新当前历史的页码（返回再进入时停在当前页）
+  if (history.state && history.state.p === 'book') {
+    history.replaceState({
+      p: 'book', b: BookState.bookId,
+      page: newPage, from: BookState.flipFrom,
+    }, '');
+  }
   renderBook();
 }
 
-/** 绑定滑动手势 */
+/** 绑定滑动手势（左边缘 28px 内起手让位给「边缘返回」） */
 function bindSwipe(el, onSwipeLeft, onSwipeRight) {
   el.addEventListener('touchstart', function(e) {
-    BookState._touchStartX = e.touches[0].clientX;
+    var x = e.touches[0].clientX;
+    BookState._touchEdge = (x <= 28);
+    BookState._touchStartX = x;
     BookState._touchStartY = e.touches[0].clientY;
   }, { passive: true });
 
   el.addEventListener('touchend', function(e) {
+    if (BookState._touchEdge) return;  // 边缘起手由返回手势处理
     var dx = e.changedTouches[0].clientX - BookState._touchStartX;
     var dy = e.changedTouches[0].clientY - BookState._touchStartY;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
