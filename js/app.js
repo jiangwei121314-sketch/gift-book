@@ -123,6 +123,19 @@ function getSelectedIo() {
   return active ? active.dataset.io : '收入';
 }
 
+/** 切换书架排列：1=每排一个，2=每排两个（默认）。persist 为 true 时保存配置 */
+function applyShelfCols(cols, persist) {
+  var grid = document.getElementById('shelf-grid');
+  grid.classList.toggle('cols-1', cols === 1);
+  var b1 = document.getElementById('btn-cols-1');
+  var b2 = document.getElementById('btn-cols-2');
+  if (b1 && b2) {
+    b1.classList.toggle('selected', cols === 1);
+    b2.classList.toggle('selected', cols !== 1);
+  }
+  if (persist) saveConfig('shelf_cols', cols).catch(function() {});
+}
+
 /** 安全绑定：元素不存在时只警告，不抛错中断后续绑定 */
 function bind(id, eventName, fn) {
   var el = document.getElementById(id);
@@ -310,6 +323,10 @@ function bindEvents() {
     if (confirm('确定删除这条记录吗？')) deleteCurrentRecord();
   });
 
+  // ---- 账本排列切换（每排一个/两个，即时生效并保存） ----
+  bind('btn-cols-1', 'click', function() { applyShelfCols(1, true); });
+  bind('btn-cols-2', 'click', function() { applyShelfCols(2, true); });
+
   // ---- 设置弹窗：关闭 ----
   bind('btn-settings-close', 'click', function() {
     var rowsInput = document.getElementById('input-rows-per-page');
@@ -491,6 +508,10 @@ function init() {
       document.getElementById('input-rows-per-page').value = rows;
     }
   }).catch(function() {}).then(function() {
+    return getConfig('shelf_cols', 2).catch(function() { return 2; });
+  }).then(function(cols) {
+    applyShelfCols(cols === 1 ? 1 : 2, false);
+  }).then(function() {
     return loadAllBooks();
   }).then(function(books) {
     AppState.books = books || [];

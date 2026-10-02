@@ -163,16 +163,23 @@ var QrScan = (function() {
 
   var _importing = false;
 
-  /** 网址码（GBT）：停止相机 → 从临时云通道下载含照片数据 → 导入 */
-  function fetchAndImport(url) {
-    if (_importing) return;
+  var MAX_ATTEMPTS = 7;
+
+  /** 网址码（GBT）：停止相机 → 从临时云通道下载含照片数据 → 导入
+   * 网络层失败自动重试最多 7 次（国内访问临时通道握手常被间歇重置）。 */
+  function fetchAndImport(url, attempt) {
+    if (attempt === undefined) attempt = 1;
+    if (_importing && attempt === 1) return;
     _importing = true;
     stopCamera();
     var status = document.getElementById('qr-status');
-    status.textContent = '已识别，正在下载含照片数据（约十几秒，请勿关闭）…';
+    status.textContent = attempt === 1
+      ? '已识别，正在下载含照片数据（约十几秒，请勿关闭）…'
+      : '网络连接不稳，正在自动重试（第 ' + attempt + '/' + MAX_ATTEMPTS +
+        ' 次）…';
 
     var timeoutP = new Promise(function(_, reject) {
-      setTimeout(function() { reject(new Error('下载超时')); }, 90000);
+      setTimeout(function() { reject(new Error('下载超时')); }, 45000);
     });
 
     Promise.race([fetch(url, { cache: 'no-store' }), timeoutP])
@@ -184,15 +191,37 @@ var QrScan = (function() {
         return importDataObject(data);
       })
       .then(function(n) {
+        _importing = false;
         closeScan();
         renderShelf();
         showPage('page-shelf');
         showToast('扫码秒传成功：' + n + ' 本账本（含照片）');
       })
       .catch(function(e) {
-        _importing = false;
         var msg = (e && e.message) ? e.message : String(e);
-        status.textContent = '下载失败：' + msg + '。请点「重新扫描」或改用 JSON 文件';
+        var networkFail = msg.indexOf('Failed to fetch') >= 0 ||
+                          msg.indexOf('NetworkError') >= 0 ||
+                          msg.indexOf('Load failed') >= 0; // iOS WebKit 文案
+        // 网络层失败且还有重试机会：1.5 秒后自动重试
+        if (networkFail && attempt < MAX_ATTEMPTS) {
+          status.textContent = '网络连接被干扰，1.5 秒后自动重试（第 ' +
+            (attempt + 1) + '/' + MAX_ATTEMPTS + ' 次）…';
+          setTimeout(function() { fetchAndImport(url, attempt + 1); }, 1500);
+          return;
+        }
+        _importing = false;
+        var hint;
+        if (networkFail) {
+          hint = '手机网络无法连接临时通道。建议：① WiFi 和手机流量互换后' +
+                 '重新扫码；② 确认电脑上的二维码窗口没有关闭；' +
+                 '③ 仍不行就改用「导出手机版数据（JSON）」发文件导入';
+        } else if (msg === '下载超时') {
+          hint = '临时通道响应超时（网络太慢）。建议 WiFi 与手机流量互换，' +
+                 '或改用「导出手机版数据（JSON）」文件方式';
+        } else {
+          hint = '下载失败：' + msg + '。请重新生成二维码或改用 JSON 文件';
+        }
+        status.textContent = hint;
       });
   }
 

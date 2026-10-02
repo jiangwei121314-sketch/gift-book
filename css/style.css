@@ -85,6 +85,10 @@ html, body {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px; align-content: start;
 }
+/* 单列模式（设置中切换） */
+.shelf-grid.cols-1 { grid-template-columns: 1fr; }
+.shelf-grid.cols-1 .book-card { min-height: 180px; }
+.shelf-grid.cols-1 .book-card-title { font-size: 20px; }
 .empty-hint {
   flex:1; display:flex; flex-direction:column; align-items:center;
   justify-content:center; color:var(--text-light); font-size:15px; gap:8px;
@@ -524,6 +528,8 @@ html, body {
 .settings-section h4 { font-size: 14px; margin-bottom: 8px; }
 .settings-desc { font-size: 12px; color: var(--text-light); margin-bottom: 10px; }
 .settings-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+/* 排列切换按钮选中态 */
+.cols-btns .btn.selected { background: var(--danger-bright); }
 /* 原生文件选择按钮（透明 input 覆盖在视觉按钮上，独立模式直接点原生） */
 .file-btn-wrap { position: relative; flex: 1; min-width: 96px; display: flex; }
 .file-btn-wrap .btn {
